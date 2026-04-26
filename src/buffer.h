@@ -1,37 +1,47 @@
 /// TODO:
-/// Currently buffer is just an API that has new, free, insert, delete, getitem, setitem, length
-/// It can be implemented as dynamic array of characters, rope data structure, gap buffer, etc.
-/// The point is we need another struct that wrap this buffer data structure that contains 
-/// the editing state of that buffer (state could be cursor, lines, etc)
 ///
-/// Editor like [Lite](github.com/lite) called it Doc
+/// Okay, the previous todo is cool, but in the end we kinda mixed the state of cursor editing state
+/// and the buffer's state in a same representation which is Buffer. I have find a good name to 
+/// separate the buffer's state (consist of filename, lines, text data) and the cursor editing state.
+/// This is very useful in the case where in the future we will need to support multiple cursor, multiple
+/// panels or tabs editing the same file/buffer. Thus separating this 2 thing is important.
+/// There will be Buffer and BufferView. Preferably Buffer and BufferView would look like the following
+///
+/// ```c
+/// struct Buffer {
+///     [ Common properties]
+///     Lines lines;
+///     const char *filepath
+///     ... [ Per implementation detail ]
+/// }
+///
+/// struct BufferView {
+///     size_t cursor;
+///     size_t current_lines;
+/// }
+/// ```
+///
+///
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
+#include "common.h"
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-
-#ifdef MEMDEBUG
-#define MALLOC_WITH_LABEL(SIZE, LABEL) malloc((SIZE))
-#define FREE_WITH_LABEL(PTR, LABEL) free((PTR))
-#else
-#define MALLOC_WITH_LABEL(SIZE, LABEL) __malloc_with_label((SIZE), (LABEL))
-#define FREE_WITH_LABEL(PTR, LABEL) __free_with_label((PTR), (LABEL))
-void *__malloc_with_label(size_t size, const char *label);
-void  __free_with_label(void *ptr, const char *label);
-#endif
 
 typedef uint32_t rune;
 
 typedef struct Line Line;
 struct Line {
-    Line *prev;
-    Line *next;
-
     size_t start;
     size_t end;
 };
+
+typedef struct Lines {
+    Line *items;
+    size_t count;
+    size_t capacity;
+} Lines;
 
 /**
  * This part is only the Base Buffer structure. You could call it 
@@ -46,12 +56,11 @@ struct Line {
  * ```
  */
 typedef struct Buffer {
+    const char *filepath;
+    Lines  lines;
+
     size_t cursor;
-    Line  *current_line;
-    struct {
-        Line *begin;
-        Line *end;
-    } lines;
+    size_t current_line;
 } Buffer;
 
 //////////////////////////////////////
@@ -59,8 +68,6 @@ typedef struct Buffer {
 /// Implementation Dependent APIs
 ///
 
-Buffer *buffer_new(void);
-void   buffer_destroy(Buffer *buf);
 rune   buffer_getitem(Buffer *buffer, size_t index);
 void   buffer_setitem(Buffer *buffer, size_t index, rune value);
 size_t buffer_length(Buffer *buffer);
@@ -76,26 +83,39 @@ void buffer_unsafe_insert(Buffer *buffer, size_t index, const char *text, size_t
  */
 void buffer_unsafe_delete(Buffer *buffer, size_t start, size_t length);
 
+/**
+ * This is unsafe because it won't initialize the base buffer's state
+ */
+Buffer *buffer_unsafe_new(void);
+
+/**
+ * This is unsafe because it won't deinitialize the base buffer's state
+ */
+void buffer_unsafe_destroy(Buffer *buf);
+
+
 //////////////////////////////////////
 ///
 /// Implementation Independent APIs
 ///
 
-/**
- * This is unsafe because it will reset the buffer's base state
- */
-void buffer_unsafe_init_base(Buffer *buffer);
+Buffer *buffer_new(void);
+void buffer_destroy(Buffer *buffer);
 
 void buffer_insert_char(Buffer *buf, rune ch);
 void buffer_backspace(Buffer *buf);
 
 void buffer_move_to_char_left(Buffer *buf);
 void buffer_move_to_char_right(Buffer *buf);
-void buffer_move_to_line_up(Buffer *buf);
-void buffer_move_to_line_down(Buffer *buf);
+void buffer_move_to_line_above(Buffer *buf);
+void buffer_move_to_line_below(Buffer *buf);
 void buffer_move_to_start_of_line(Buffer *buf);
 void buffer_move_to_end_of_line(Buffer *buf);
 void buffer_move_to_first_line(Buffer *buf);
 void buffer_move_to_last_line(Buffer *buf);
+void buffer_move_to_line(Buffer *buf, size_t line_number, size_t line_offset);
+
+
+void buffer__debug(Buffer *buf);
 
 #endif // BUFFER_H_ 

@@ -12,18 +12,17 @@ typedef struct ArrayBuffer {
 } ArrayBuffer;
 
 #define INIT_CAP 256
-Buffer *buffer_new(void)
+Buffer *buffer_unsafe_new(void)
 {
     ArrayBuffer *buf = MALLOC_WITH_LABEL(sizeof(*buf), "ArrayBuffer");
-    buffer_unsafe_init_base((Buffer*)buf);
-
     buf->capacity = INIT_CAP;
     buf->items    = MALLOC_WITH_LABEL(buf->capacity, "ArrayBuffer.items");
     buf->count    = 0;
+
     return (Buffer*)buf;
 }
 
-void buffer_destroy(Buffer *base)
+void buffer_unsafe_destroy(Buffer *base)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;
     FREE_WITH_LABEL(buf->items, "ArrayBuffer.items");

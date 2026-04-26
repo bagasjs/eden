@@ -3,13 +3,12 @@
 #include "ren.h"
 #include <stdlib.h>
 
+#include "tp/stb_image.h"
+#include "tp/glad.h"
+
 #define RGFW_OPENGL
 #define RGFW_IMPLEMENTATION
 #include "tp/RGFW.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "tp/stb_image.h"
-
-#include "tp/glad.h"
 
 RenImage *ren_load_image_from_file(const char *filepath)
 {
@@ -27,13 +26,13 @@ bool load_font_atlas_from_file(FontAtlas *atlas, const char *filepath)
     fseek(fontFile, 0, SEEK_END);
     size_t size = ftell(fontFile);
     fseek(fontFile, 0, SEEK_SET);
-    uint8_t *fontBuffer = malloc(size);
+    uint8_t *fontBuffer = MALLOC_WITH_LABEL(size, "tmp.fontBuffer");
     fread(fontBuffer, size, 1, fontFile);
     fclose(fontFile);
-    if(!load_font_atlas(atlas, fontBuffer, 64, 0, NULL)) {
+    if(!load_font_atlas(atlas, fontBuffer, 24, 0, NULL)) {
         return false;
     }
-    free(fontBuffer);
+    FREE_WITH_LABEL(fontBuffer, "tmp.fontBuffer");
     return true;
 }
 
@@ -49,17 +48,22 @@ typedef struct {
     FontAtlas *font;
     size_t font_size;
     size_t tab_length;
+
+    bool hide_cursor; // cursor ticker
 } Editor;
 
+#define CURSOR_WIDTH 2
 void editor_render(Editor *e, int x, int y)
 {
     int cx = x;
     int cy = y;
 
+    // TODO: would be better if we do 60FPS
+    // e->hide_cursor = !e->hide_cursor;
+
     if(e->buf->cursor == 0) {
         if(cx <= x) {
-            const int width = 2;
-            ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = width, .h = e->font_size }, REN_WHITE);
+            if(!e->hide_cursor) ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
         }
     }
 
@@ -80,11 +84,11 @@ void editor_render(Editor *e, int x, int y)
 
         if(i + 1 == e->buf->cursor) {
             if(cx <= x) {
-                const int width = 2;
-                ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = width, .h = e->font_size }, REN_WHITE);
+                if(!e->hide_cursor) 
+                    ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
             } else {
-                const int width = 2;
-                ren_draw_rect((RenRect) { .x = cx - width, .y = cy, .w = width, .h = e->font_size }, REN_WHITE);
+                if(!e->hide_cursor) 
+                    ren_draw_rect((RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
             }
         }
     }
@@ -100,9 +104,11 @@ void editor_handle_key_event(Editor *ed, int key)
             buffer_move_to_char_right(ed->buf);
             break;
         case RGFW_keyUp:
-            {
-                buffer_dump(ed->buf);
-            } break;
+            buffer_move_to_line_above(ed->buf);
+            break;
+        case RGFW_keyDown:
+            buffer_move_to_line_below(ed->buf);
+            break;
         default:
             break;
     }
@@ -139,7 +145,20 @@ void editor_handle_keychar_event(Editor *ed, rune c)
 
     if(ed->mode == MODE_NORMAL) {
         switch(c) {
+            case 'd':
+                buffer__debug(ed->buf);
+                break;
+            case '0':
+                buffer_move_to_start_of_line(ed->buf);
+                break;
+            case '$':
+                buffer_move_to_end_of_line(ed->buf);
+                break;
             case 'i':
+                ed->mode = MODE_INSERT;
+                break;
+            case 'a':
+                buffer_move_to_char_right(ed->buf);
                 ed->mode = MODE_INSERT;
                 break;
             case 'h':
@@ -149,8 +168,10 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 buffer_move_to_char_right(ed->buf);
                 break;
             case 'j':
+                buffer_move_to_line_below(ed->buf);
                 break;
             case 'k':
+                buffer_move_to_line_above(ed->buf);
                 break;
             default:
                 break;
@@ -186,7 +207,6 @@ int main(void)
     ren_init();
     ren_viewport(0, 0, w, h);
 
-
     FontAtlas atlas = {0};
     if(!load_font_atlas_from_file(&atlas, "./assets/firacode.ttf")) {
         return -1;
@@ -195,7 +215,7 @@ int main(void)
     Editor ed = {0};
     ed.buf  = buffer_new();
     ed.font = &atlas;
-    ed.font_size  = 16;
+    ed.font_size  = 18;
     ed.tab_length = 4;
 
     while(RGFW_window_shouldClose(window) == RGFW_FALSE) {

@@ -1,11 +1,12 @@
 #include "ren.h"
 
+
 /// TODO: remove some of this dependencies, especially glad.h maybe define our own functions?
 #include "tp/glad.h"
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include "common.h"
 
 typedef struct { float x, y;       } V2f;
 typedef struct { float x, y, z;    } V3f;
@@ -253,7 +254,7 @@ RenImage *ren_load_image(const void *pixels, int width, int height, int n_channe
     glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, data_format, GL_UNSIGNED_BYTE, pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    RenImage *image = malloc(sizeof(*image) + (width * height * n_channels));
+    RenImage *image = MALLOC_WITH_LABEL(sizeof(*image) + (width * height * n_channels), "RenImage");
     image->texture = texture;
     image->width   = width;
     image->height  = height;
@@ -266,7 +267,7 @@ RenImage *ren_load_image(const void *pixels, int width, int height, int n_channe
 void ren_unload_image(RenImage *image)
 {
     glDeleteTextures(1, &image->texture);
-    free(image);
+    FREE_WITH_LABEL(image, "RenImage");
 }
 
 RenRect ren_get_image_rect(RenImage *image)

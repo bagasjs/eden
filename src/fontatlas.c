@@ -1,10 +1,10 @@
 #include "fontatlas.h"
 #include "ren.h"
 #include <stdio.h>
+#include "common.h"
+#include <math.h>
 
-#define STB_TRUETYPE_IMPLEMENTATION
 #include "tp/stb_truetype.h"
-
 
 bool load_font_atlas(FontAtlas *atlas, const uint8_t *font_data, int base_font_size, int codepoint_amount, int *codepoints)
 {
@@ -18,7 +18,7 @@ bool load_font_atlas(FontAtlas *atlas, const uint8_t *font_data, int base_font_s
     int is_codepoint_generated = 0;
     if(!codepoints) {
         is_codepoint_generated = 1;
-        codepoints = malloc(sizeof(int) * codepoint_amount);
+        codepoints = MALLOC_WITH_LABEL(sizeof(int) * codepoint_amount, "tmp.(FontAtlas).codepoints");
         for(int i = 0; i < codepoint_amount; ++i)
             codepoints[i] = 32 + i;
     }
@@ -41,9 +41,9 @@ bool load_font_atlas(FontAtlas *atlas, const uint8_t *font_data, int base_font_s
         bw += roundf(ax * scale);
     }
 
-    uint8_t *bitmap = malloc(bw * bh);
+    uint8_t *bitmap = MALLOC_WITH_LABEL(bw * bh, "tmp.(FontAtlas).bitmap");
     memset(bitmap, 0, bw * bh);
-    GlyphMetric *chars = malloc(sizeof(GlyphMetric) * codepoint_amount);
+    GlyphMetric *chars = MALLOC_WITH_LABEL(sizeof(GlyphMetric) * codepoint_amount, "FontAtlas.Array<GlyphMetric>");
 
     ascent = roundf(ascent * scale);
     descent = roundf(descent * scale);
@@ -78,31 +78,31 @@ bool load_font_atlas(FontAtlas *atlas, const uint8_t *font_data, int base_font_s
     }
 
     if(is_codepoint_generated)
-        free(codepoints);
+        FREE_WITH_LABEL(codepoints, "tmp.(FontAtlas).codepoints");
 
     
-    uint8_t *data = (uint8_t *)malloc(bw*bh*4);
+    uint8_t *data = (uint8_t *)MALLOC_WITH_LABEL(bw*bh*4, "tmp.(FontAtlas).data");
     for (int i = 0, k = 0; i < (int)(bw*bh); i++, k += 4) {
         data[k + 0] = 255;
         data[k + 1] = 255;
         data[k + 2] = 255;
         data[k + 3] = ((uint8_t *)bitmap)[i];
     }
-    free(bitmap);
+    FREE_WITH_LABEL(bitmap, "tmp.(FontAtlas).bitmap");
 
     atlas->width  = bw;
     atlas->height = bh;
     atlas->chars = chars;
     atlas->count_chars = codepoint_amount;
     atlas->image = ren_load_image(data, bw, bh, 4);
-    free(data);
+    FREE_WITH_LABEL(data, "tmp.(FontAtlas).data");
     return true;
 }
 
 void unload_font_atlas(FontAtlas *atlas)
 {
     ren_unload_image(atlas->image);
-    free(atlas->chars);
+    FREE_WITH_LABEL(atlas->chars, "FontAtlas.chars");
 }
 
 static GlyphMetric find_glyph_metric(FontAtlas *atlas, int codepoint)
