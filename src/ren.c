@@ -314,6 +314,10 @@ void quad(
         V2f p2, V4f c2, V2f uv2, float tex2,
         V2f p3, V4f c3, V2f uv3, float tex3)
 {
+    if (ren.count_vertices + 4 > REN_MAX_VERTICES ||
+            ren.count_elements + 6 > REN_MAX_ELEMENTS) {
+        ren_flush();
+    }
     ren.elements[ren.count_elements + 0] = ren.count_vertices + 0;
     ren.elements[ren.count_elements + 1] = ren.count_vertices + 1;
     ren.elements[ren.count_elements + 2] = ren.count_vertices + 2;
