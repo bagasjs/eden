@@ -19,6 +19,7 @@ typedef struct {
 
 bool load_font_atlas(FontAtlas *atlas, const uint8_t *font_data, int base_font_size, int codepoint_amount, int *codepoints);
 void unload_font_atlas(FontAtlas *atlas);
-int draw_codepoint(int codepoint, FontAtlas *atlas, int x, int y, int font_size, RenColor tint);
+int  draw_codepoint(int codepoint, FontAtlas *atlas, int x, int y, int font_size, RenColor tint);
+void draw_text(const char *text, FontAtlas *atlas, int x, int y, int font_size, RenColor tint);
 
 #endif // FONTATLAS_H_

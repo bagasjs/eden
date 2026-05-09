@@ -29,6 +29,12 @@ void buffer_unsafe_destroy(Buffer *base)
     FREE_WITH_LABEL(buf, "ArrayBuffer");
 }
 
+void buffer_unsafe_reset(Buffer *base)
+{
+    ArrayBuffer *buf = (ArrayBuffer*)base;
+    buf->count = 0;
+}
+
 void buffer_unsafe_insert(Buffer *base, size_t index, const char *text, size_t text_length)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;
@@ -95,9 +101,16 @@ size_t buffer_length(Buffer *base)
     return buf->count;
 }
 
+const char *buffer_to_cstr(Buffer *base)
+{
+    ArrayBuffer *buf = (ArrayBuffer*)base;
+    return buf->items;
+}
+
 void buffer_dump(Buffer *base)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;
     printf("BUFFER: length=%zu\n", buf->count);
     printf("%.*s\n", (int)buf->count, buf->items);
 }
+

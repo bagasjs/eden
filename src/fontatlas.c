@@ -135,3 +135,25 @@ int draw_codepoint(int codepoint, FontAtlas *atlas, int x, int y, int font_size,
     ren_draw_image(atlas->image, src, dst, tint);
     return x + dst.w;
 }
+
+#include <string.h>
+void draw_text(const char *text, FontAtlas *atlas, int x, int y, int font_size, RenColor tint)
+{
+    size_t len = strlen(text);
+    int cx = x;
+    int cy = y;
+    for(size_t i = 0; i < len; ++i) {
+        int c = text[i];
+        switch(c) {
+            case '\n':
+                cx = x;
+                cy += font_size;
+                break;
+            case '\t':
+                break;
+            default:
+                cx = draw_codepoint(c, atlas, cx, cy, font_size, REN_WHITE);
+                break;
+        }
+    }
+}

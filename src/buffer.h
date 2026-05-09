@@ -72,6 +72,7 @@ rune   buffer_getitem(Buffer *buffer, size_t index);
 void   buffer_setitem(Buffer *buffer, size_t index, rune value);
 size_t buffer_length(Buffer *buffer);
 void   buffer_dump(Buffer *buffer);
+const char *buffer_to_cstr(Buffer *base);
 
 /**
  * This is unsafe because it will make buffer's base state to be invalid
@@ -93,6 +94,10 @@ Buffer *buffer_unsafe_new(void);
  */
 void buffer_unsafe_destroy(Buffer *buf);
 
+/**
+ * This is unsafe because it won't deinitialize the base buffer's state
+ */
+void buffer_unsafe_reset(Buffer *buffer);
 
 //////////////////////////////////////
 ///
@@ -101,6 +106,7 @@ void buffer_unsafe_destroy(Buffer *buf);
 
 Buffer *buffer_new(void);
 void buffer_destroy(Buffer *buffer);
+void buffer_reset(Buffer *buffer);
 
 void buffer_insert_char(Buffer *buf, rune ch);
 void buffer_backspace(Buffer *buf);

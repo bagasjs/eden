@@ -39,10 +39,12 @@ bool load_font_atlas_from_file(FontAtlas *atlas, const char *filepath)
 typedef enum {
     MODE_NORMAL = 0,
     MODE_INSERT,
+    MODE_COMMAND,
 } Mode;
 
 typedef struct {
     Buffer *buf;
+    Buffer *cmd;
     Mode mode;
 
     FontAtlas *font;
@@ -50,10 +52,14 @@ typedef struct {
     size_t tab_length;
 
     bool hide_cursor; // cursor ticker
+
+    int window_width;
+    int window_height;
 } Editor;
 
 #define CURSOR_WIDTH 2
-void editor_render(Editor *e, int x, int y)
+
+void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
 {
     int cx = x;
     int cy = y;
@@ -67,8 +73,8 @@ void editor_render(Editor *e, int x, int y)
         }
     }
 
-    for(size_t i = 0; i < buffer_length(e->buf); ++i) {
-        rune c = buffer_getitem(e->buf, i);
+    for(size_t i = 0; i < buffer_length(buf); ++i) {
+        rune c = buffer_getitem(buf, i);
 
         switch(c) {
             case '\n':
@@ -94,6 +100,38 @@ void editor_render(Editor *e, int x, int y)
     }
 }
 
+void editor_render_statusbar(Editor *e)
+{
+    int padding = 0;
+    RenRect outer = {0};
+    outer.x = 0;
+    outer.y = e->window_height - e->font_size - padding;
+    outer.w = e->window_width;
+    outer.h = e->font_size + padding;
+    ren_draw_rect(outer, REN_BLACK);
+
+    switch(e->mode) {
+        case MODE_INSERT:
+            draw_text("-- INSERT --", e->font, outer.x, outer.y, e->font_size, REN_WHITE);
+            break;
+        case MODE_COMMAND:
+            {
+                int offset = 0;
+                offset = draw_codepoint(':', e->font, outer.x + offset, outer.y, e->font_size, REN_WHITE);
+                editor_render_buffer(e, e->cmd, outer.x + offset, outer.y);
+            } break;
+        case MODE_NORMAL:
+        default:
+            break;
+    }
+}
+
+void editor_render(Editor *e, int x, int y)
+{
+    editor_render_buffer(e, e->buf, x, y);
+    editor_render_statusbar(e);
+}
+
 void editor_handle_key_event(Editor *ed, int key)
 {
     switch(key) {
@@ -114,12 +152,37 @@ void editor_handle_key_event(Editor *ed, int key)
     }
 }
 
+#include <stdio.h>
+void editor_handle_command(Editor *ed, const char *command)
+{
+    printf("COMMAND: %s\n", command);
+}
+
 void editor_handle_keychar_event(Editor *ed, rune c)
 {
 #define BACKSPACE 8
 #define TAB 9
 #define ENTER 13
 #define ESCAPE 27
+
+    if(ed->mode == MODE_COMMAND) {
+        switch(c) {
+            case ENTER:
+                editor_handle_command(ed, buffer_to_cstr(ed->cmd));
+                buffer_reset(ed->cmd);
+                ed->mode = MODE_NORMAL;
+                break;
+            case ESCAPE:
+                buffer_reset(ed->cmd);
+                ed->mode = MODE_NORMAL;
+                break;
+            case BACKSPACE:
+                buffer_backspace(ed->cmd);
+            default: 
+                buffer_insert_char(ed->cmd, c);
+                break;
+        }
+    }
 
     if(ed->mode == MODE_INSERT) {
         switch(c) {
@@ -152,6 +215,7 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 buffer_move_to_start_of_line(ed->buf);
                 break;
             case '$':
+            case '-':
                 buffer_move_to_end_of_line(ed->buf);
                 break;
             case 'i':
@@ -160,6 +224,9 @@ void editor_handle_keychar_event(Editor *ed, rune c)
             case 'a':
                 buffer_move_to_char_right(ed->buf);
                 ed->mode = MODE_INSERT;
+                break;
+            case ':':
+                ed->mode = MODE_COMMAND;
                 break;
             case 'h':
                 buffer_move_to_char_left(ed->buf);
@@ -172,6 +239,16 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 break;
             case 'k':
                 buffer_move_to_line_above(ed->buf);
+                break;
+            case 'o':
+                buffer_move_to_end_of_line(ed->buf);
+                buffer_insert_char(ed->buf, '\n');
+                ed->mode = MODE_INSERT;
+                break;
+            case 'O':
+                buffer_move_to_line_above(ed->buf);
+                buffer_insert_char(ed->buf, '\n');
+                ed->mode = MODE_INSERT;
                 break;
             default:
                 break;
@@ -213,12 +290,16 @@ int main(void)
     }
 
     Editor ed = {0};
+    ed.cmd  = buffer_new();
     ed.buf  = buffer_new();
     ed.font = &atlas;
-    ed.font_size  = 18;
+    ed.font_size  = 20;
     ed.tab_length = 4;
 
     while(RGFW_window_shouldClose(window) == RGFW_FALSE) {
+        ed.window_width  = window->w;
+        ed.window_height = window->h;
+
         RGFW_event event;
         while (RGFW_window_checkEvent(window, &event)) {
             if (event.type == RGFW_windowClose) {
@@ -255,10 +336,10 @@ int main(void)
     }
 
     buffer_destroy(ed.buf);
+    buffer_destroy(ed.cmd);
 
     unload_font_atlas(&atlas);
     ren_deinit();
     RGFW_window_close(window);
     return 0;
 }
-

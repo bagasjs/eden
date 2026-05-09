@@ -15,7 +15,6 @@ void buffer__debug(Buffer *buf)
     }
 }
 
-
 static void buffer_update_lines(Buffer *buffer)
 {
     buffer->lines.count = 0;
@@ -50,6 +49,14 @@ void buffer_destroy(Buffer *buffer)
 {
     free(buffer->lines.items);
     buffer_unsafe_destroy(buffer);
+}
+
+void buffer_reset(Buffer *buffer)
+{
+    buffer->lines.count = 0;
+    buffer->cursor = 0;
+    buffer->current_line = 0;
+    buffer_unsafe_reset(buffer);
 }
 
 void buffer_insert_char(Buffer *buf, rune ch)
