@@ -69,7 +69,7 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
 
     if(e->buf->cursor == 0) {
         if(cx <= x) {
-            if(!e->hide_cursor) ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
+            if(!e->hide_cursor) ren_draw_rect((RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
         }
     }
 
@@ -91,7 +91,7 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
         if(i + 1 == e->buf->cursor) {
             if(cx <= x) {
                 if(!e->hide_cursor) 
-                    ren_draw_rect((RenRect) { .x = 0, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
+                    ren_draw_rect((RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
             } else {
                 if(!e->hide_cursor) 
                     ren_draw_rect((RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
@@ -155,7 +155,13 @@ void editor_handle_key_event(Editor *ed, int key)
 #include <stdio.h>
 void editor_handle_command(Editor *ed, const char *command)
 {
-    printf("COMMAND: %s\n", command);
+    int length = buffer_length(ed->cmd);
+    printf("COMMAND:");
+    for(int i = 0; i < length; ++i) {
+        rune ch = buffer_getitem(ed->cmd, i);
+        putchar(ch);
+    }
+    putchar('\n');
 }
 
 void editor_handle_keychar_event(Editor *ed, rune c)
@@ -178,6 +184,7 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 break;
             case BACKSPACE:
                 buffer_backspace(ed->cmd);
+                break;
             default: 
                 buffer_insert_char(ed->cmd, c);
                 break;
