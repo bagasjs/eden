@@ -55,6 +55,8 @@ typedef struct {
 
     int window_width;
     int window_height;
+
+    bool exit;
 } Editor;
 
 #define CURSOR_WIDTH 2
@@ -159,6 +161,9 @@ void editor_handle_command(Editor *ed, const char *command)
     printf("COMMAND:");
     for(int i = 0; i < length; ++i) {
         rune ch = buffer_getitem(ed->cmd, i);
+        if(ch == 'q' && length == 1) {
+            ed->exit = true;
+        }
         putchar(ch);
     }
     putchar('\n');
@@ -303,7 +308,9 @@ int main(void)
     ed.font_size  = 20;
     ed.tab_length = 4;
 
-    while(RGFW_window_shouldClose(window) == RGFW_FALSE) {
+    ed.exit = false;
+
+    while(!ed.exit && RGFW_window_shouldClose(window) == RGFW_FALSE) {
         ed.window_width  = window->w;
         ed.window_height = window->h;
 
