@@ -74,6 +74,13 @@ void buffer_backspace(Buffer *buf)
     buffer_update_lines(buf);
 }
 
+void buffer_delete_current_line(Buffer *buf)
+{
+    Line current = buf->lines.items[buf->current_line];
+    buffer_unsafe_delete(buf, current.start, current.end - current.start + 1);
+    buffer_update_lines(buf);
+}
+
 void buffer_move_to_line_above(Buffer *buf)
 {
     if(buf->current_line != 0) {

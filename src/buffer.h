@@ -111,6 +111,8 @@ void buffer_reset(Buffer *buffer);
 void buffer_insert_char(Buffer *buf, rune ch);
 void buffer_backspace(Buffer *buf);
 
+void buffer_delete_current_line(Buffer *buf);
+
 void buffer_move_to_char_left(Buffer *buf);
 void buffer_move_to_char_right(Buffer *buf);
 void buffer_move_to_line_above(Buffer *buf);

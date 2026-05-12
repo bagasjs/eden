@@ -56,6 +56,8 @@ typedef struct {
     int window_width;
     int window_height;
 
+    rune prevc;
+
     bool exit;
 } Editor;
 
@@ -220,8 +222,11 @@ void editor_handle_keychar_event(Editor *ed, rune c)
 
     if(ed->mode == MODE_NORMAL) {
         switch(c) {
-            case 'd':
+            case '=':
                 buffer__debug(ed->buf);
+                break;
+            case 'd':
+                if(ed->prevc == 'd') buffer_delete_current_line(ed->buf);
                 break;
             case '0':
                 buffer_move_to_start_of_line(ed->buf);
@@ -266,6 +271,8 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 break;
         }
     }
+
+    ed->prevc = c;
 }
 
 int main(void)
