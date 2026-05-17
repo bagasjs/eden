@@ -7,6 +7,7 @@
 #include "tp/glad.h"
 
 #define RGFW_OPENGL
+#define RGFW_PRINT_ERRORS
 #define RGFW_IMPLEMENTATION
 #include "tp/RGFW.h"
 
@@ -23,6 +24,11 @@ RenImage *ren_load_image_from_file(const char *filepath)
 bool load_font_atlas_from_file(FontAtlas *atlas, const char *filepath)
 {
     FILE* fontFile = fopen(filepath, "rb");
+    if(!fontFile) {
+        fprintf(stderr, "[ERROR] Failed to find font %s\n", filepath);
+        return false;
+    }
+
     fseek(fontFile, 0, SEEK_END);
     size_t size = ftell(fontFile);
     fseek(fontFile, 0, SEEK_SET);
@@ -278,7 +284,8 @@ void editor_handle_keychar_event(Editor *ed, rune c)
 int main(void)
 {
     RGFW_glHints* hints = RGFW_getGlobalHints_OpenGL();
-    hints->major = 3;
+    // NOTE: We use 4.3 in because in Windows glDebugMessageCallback is not exists in 3.3
+    hints->major = 4;
     hints->minor = 3;
     RGFW_setGlobalHints_OpenGL(hints);
 

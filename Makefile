@@ -1,6 +1,8 @@
 CC := clang
-CFLAGS := -Wall -Wextra -pedantic -g -fsanitize=address
-LFLAGS := -lX11 -lXrandr -lm -lGL
+# CFLAGS := -Wall -Wextra -pedantic -g -fsanitize=address
+CFLAGS := -Wall -Wextra -pedantic -g -fsanitize=address -D_CRT_SECURE_NO_WARNINGS
+# LFLAGS := -lX11 -lXrandr -lm -lGL
+LFLAGS := -lwinmm -lgdi32
 
 TPOBJS := build/glad.o build/stb_image.o build/stb_truetype.o
 
