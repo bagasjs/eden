@@ -5,6 +5,8 @@
 
 void buffer__debug(Buffer *buf)
 {
+    printf("Cursor: %zu\n", buf->cursor);
+    printf("Current Line: %zu\n", buf->current_line);
     for(size_t i = 0; i < buf->lines.count; ++i) {
         Line line = buf->lines.items[i];
         printf("%zu [%zu - %zu]| ", i, line.start, line.end);
@@ -59,18 +61,82 @@ void buffer_reset(Buffer *buffer)
     buffer_unsafe_reset(buffer);
 }
 
+void buffer_move_cursor_to(Buffer *buf, size_t index)
+{
+    // NOTE: move cursor will commit a transaction for undo operation
+    buf->cursor = index;
+}
+
+void buffer_move_cursor_to_line(Buffer *buf, size_t line_number, size_t line_offset)
+{
+    if(line_number > buf->lines.count) {
+        line_number = buf->lines.count - 1;
+    }
+    Line line = buf->lines.items[line_number];
+    size_t line_len = line.end - line.start + 1;
+    if(line_offset > line_len) {
+        line_offset = line_len - 1;
+    }
+    size_t index = line.start + line_offset;
+
+    buffer_move_cursor_to(buf, index);
+    buf->current_line = line_number;
+}
+
+
+void buffer_move_cursor_to_left(Buffer *buf, size_t n_step)
+{
+    /*printf("MOVE TO LEFT:\n");*/
+    size_t prob = buf->cursor - n_step;
+    if(buf->cursor < n_step) prob = 0;
+    size_t curr_line_num = buf->current_line;
+    Line   curr_line     = buf->lines.items[curr_line_num];
+    /*printf("    current: %zu\n", buf->cursor);*/
+    /*printf("    target: %zu\n",  prob);*/
+    /*printf("    Probing line\n");*/
+    /*printf("        current line: %zu\n", curr_line_num);*/
+    while(curr_line_num != 0 && prob < curr_line.start) {
+        curr_line_num -= 1;
+        curr_line      = buf->lines.items[curr_line_num];
+        /*printf("        previous line: %zu [%zu - %zu]\n", curr_line_num, curr_line.start, curr_line.end);*/
+    }
+
+    buffer_move_cursor_to(buf, prob);
+    buf->current_line = curr_line_num;
+}
+
+void buffer_move_cursor_to_right(Buffer *buf, size_t n_step)
+{
+    size_t length = buffer_length(buf);
+    size_t prob = buf->cursor + n_step;
+    if(buf->cursor + n_step >= length) prob = length;
+    size_t curr_line_num = buf->current_line;
+    Line   curr_line     = buf->lines.items[curr_line_num];
+    while(curr_line_num < length && prob > curr_line.end) {
+        curr_line_num += 1;
+        curr_line      = buf->lines.items[curr_line_num];
+    }
+    buffer_move_cursor_to(buf, prob);
+    buf->current_line = curr_line_num;
+}
+
+void buffer_insert(Buffer *buf, const char *text, size_t size)
+{
+    buffer_unsafe_insert(buf, buf->cursor, text, size);
+    buffer_move_cursor_to_right(buf, size);
+    buffer_update_lines(buf);
+}
+
 void buffer_insert_char(Buffer *buf, rune ch)
 {
-    buffer_unsafe_insert(buf, buf->cursor, (char*)&ch, 1);
-    buf->cursor += 1;
-    buffer_update_lines(buf);
+    buffer_insert(buf, (char*)&ch, 1);
 }
 
 void buffer_backspace(Buffer *buf)
 {
     if(buf->cursor == 0) return;
     buffer_unsafe_delete(buf, buf->cursor - 1, 1);
-    buf->cursor -= 1;
+    buffer_move_cursor_to_left(buf, 1);
     buffer_update_lines(buf);
 }
 
@@ -83,54 +149,60 @@ void buffer_delete_current_line(Buffer *buf)
 
 void buffer_move_to_line_above(Buffer *buf)
 {
-    if(buf->current_line != 0) {
-        buf->cursor = buf->lines.items[buf->current_line - 1].end;
-        buf->current_line -= 1;
-    }
+    // NOTE: -1 for the last parameter which is the line_offset works because
+    //       in C -1 for uint is casted into UINT_MAX
+    // TODO: Taking advantage of UB
+    //       This feels wrong. Find a better way to do this
+    if(buffer_get_current_line(buf) != 0) 
+        buffer_move_cursor_to_line(buf, buf->current_line - 1, -1);
 }
 
 void buffer_move_to_line_below(Buffer *buf)
 {
-    if(buf->current_line + 1 < buf->lines.count) {
-        buf->cursor = buf->lines.items[buf->current_line + 1].end;
-        buf->current_line += 1;
-    }
+    // NOTE: -1 for the last parameter which is the line_offset works because
+    //       in C -1 for uint is casted into UINT_MAX
+    // TODO: Taking advantage of UB
+    //       This feels wrong. Find a better way to do this
+    if(buffer_get_current_line(buf) + 1 < buffer_get_total_lines(buf)) 
+        buffer_move_cursor_to_line(buf, buf->current_line - 1, -1);
 }
+
+/*void buffer_move_to_char_left(Buffer *buf)*/
+/*{*/
+/*    buffer_move_cursor_to_left(buf, 1);*/
+/*}*/
 
 void buffer_move_to_char_left(Buffer *buf)
 {
     // TODO: we want move_to_char_left not working if it's the
     //       end of current line (just like VIM)
-    if(buf->cursor != 0) {
-        Line curr = buf->lines.items[buf->current_line];
-        size_t prob = buf->cursor - 1;
-        if(curr.start <= prob && prob <= curr.end) {
-            buf->cursor = prob;
-        }
-    }
-}
-
-void buffer_move_to_start_of_line(Buffer *buf)
-{
-    Line curr = buf->lines.items[buf->current_line];
-    buf->cursor = curr.start;
-}
-
-void buffer_move_to_end_of_line(Buffer *buf)
-{
-    Line curr = buf->lines.items[buf->current_line];
-    buf->cursor = curr.end;
+    buffer_move_cursor_to_left(buf, 1);
 }
 
 void buffer_move_to_char_right(Buffer *buf)
 {
     // TODO: we want move_to_char_right not working if it's the
     //       start of current line (just like VIM)
-    if(buf->cursor < buffer_length(buf)) {
-        Line curr = buf->lines.items[buf->current_line];
-        size_t prob = buf->cursor + 1;
-        if(curr.start <= prob && prob <= curr.end) {
-            buf->cursor = prob;
-        }
-    }
+    buffer_move_cursor_to_right(buf, 1);
+    /*if(buf->cursor < buffer_length(buf)) {*/
+    /*    Line curr = buf->lines.items[buf->current_line];*/
+    /*    size_t prob = buf->cursor + 1;*/
+    /*    if(curr.start <= prob && prob <= curr.end) {*/
+    /*        buf->cursor = prob;*/
+    /*    }*/
+    /*}*/
+}
+
+void buffer_move_to_start_of_line(Buffer *buf)
+{
+    buffer_move_cursor_to_line(buf, buffer_get_current_line(buf), 0);
+}
+
+void buffer_move_to_end_of_line(Buffer *buf)
+{
+    // NOTE: -1 for the last parameter which is the line_offset works because
+    //       in C -1 for uint is casted into UINT_MAX
+    // TODO: Taking advantage of UB
+    //       This feels wrong. Find a better way to do this
+    buffer_move_cursor_to_line(buf, buffer_get_current_line(buf), -1);
 }

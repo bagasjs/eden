@@ -1,6 +1,5 @@
 #include "ren.h"
 
-
 /// TODO: remove some of this dependencies, especially glad.h maybe define our own functions?
 #include "tp/glad.h"
 #include <assert.h>

@@ -17,8 +17,8 @@ bool ren_init(void);
 void ren_deinit(void);
 void ren_viewport(int x, int y, int width, int height);
 
-// TODO: it's would be more explicit if we change n_channels to pixel_format
-//       something like RGBA, RGB and GREYSCALE
+// TODO: it's would be better if we're more explicit about pixel format. 
+//       Change n_channels to pixel_format something like RGBA, RGB and GREYSCALE
 RenImage *ren_load_image(const void *pixels, int width, int height, int n_channels);
 void ren_unload_image(RenImage *image);
 RenRect ren_get_image_rect(RenImage *image);

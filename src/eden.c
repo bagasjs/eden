@@ -142,6 +142,24 @@ void editor_render(Editor *e, int x, int y)
     editor_render_statusbar(e);
 }
 
+#include <stdio.h>
+void editor_handle_command(Editor *ed, const char *command)
+{
+    int length = buffer_length(ed->cmd);
+    printf("COMMAND:");
+    for(int i = 0; i < length; ++i) {
+        rune ch = buffer_getitem(ed->cmd, i);
+        if(ch == 'q' && length == 1) {
+            ed->exit = true;
+        }
+        putchar(ch);
+    }
+    putchar('\n');
+}
+
+// TODO: Platform abstraction
+//       We need a better platform abstraction layer.
+//       Mostly we need a set of keycode, event type, etc.
 void editor_handle_key_event(Editor *ed, int key)
 {
     switch(key) {
@@ -162,21 +180,9 @@ void editor_handle_key_event(Editor *ed, int key)
     }
 }
 
-#include <stdio.h>
-void editor_handle_command(Editor *ed, const char *command)
-{
-    int length = buffer_length(ed->cmd);
-    printf("COMMAND:");
-    for(int i = 0; i < length; ++i) {
-        rune ch = buffer_getitem(ed->cmd, i);
-        if(ch == 'q' && length == 1) {
-            ed->exit = true;
-        }
-        putchar(ch);
-    }
-    putchar('\n');
-}
-
+// TODO: Platform abstraction
+//       We need a better platform abstraction layer.
+//       Mostly we need a set of keycode, event type, etc.
 void editor_handle_keychar_event(Editor *ed, rune c)
 {
 #define BACKSPACE 8
