@@ -164,7 +164,7 @@ void buffer_move_to_line_below(Buffer *buf)
     // TODO: Taking advantage of UB
     //       This feels wrong. Find a better way to do this
     if(buffer_get_current_line(buf) + 1 < buffer_get_total_lines(buf)) 
-        buffer_move_cursor_to_line(buf, buf->current_line - 1, -1);
+        buffer_move_cursor_to_line(buf, buf->current_line + 1, -1);
 }
 
 /*void buffer_move_to_char_left(Buffer *buf)*/
