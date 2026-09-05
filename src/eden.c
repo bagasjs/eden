@@ -48,19 +48,32 @@ typedef enum {
     MODE_COMMAND,
 } Mode;
 
+typedef struct EditorConfig {
+    RenColor background;
+
+    size_t font_size;
+    size_t tab_length;
+} EditorConfig;
+
 typedef struct {
+    EditorConfig config;
+
     Buffer *buf;
     Buffer *cmd;
     Mode mode;
 
     FontAtlas *font;
-    size_t font_size;
-    size_t tab_length;
 
     bool hide_cursor; // cursor ticker
 
     int window_width;
     int window_height;
+
+    struct {
+        char  *items;
+        size_t count;
+        size_t capacity;
+    } tmp;
 
     rune prevc;
 
@@ -77,9 +90,13 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
     // TODO: would be better if we do 60FPS
     // e->hide_cursor = !e->hide_cursor;
 
-    if(e->buf->cursor == 0) {
+    if(buf->cursor == 0) {
         if(cx <= x) {
-            if(!e->hide_cursor) ren_draw_rect((RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
+            if(!e->hide_cursor) {
+                ren_draw_rect(
+                        (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                        REN_WHITE);
+            }
         }
     }
 
@@ -89,22 +106,28 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
         switch(c) {
             case '\n':
                 cx = x;
-                cy += e->font_size;
+                cy += e->config.font_size;
                 break;
             case '\t':
                 break;
             default:
-                cx = draw_codepoint(c, e->font, cx, cy, e->font_size, REN_WHITE);
+                cx = draw_codepoint(c, e->font, cx, cy, e->config.font_size, REN_WHITE);
                 break;
         }
 
-        if(i + 1 == e->buf->cursor) {
+        if(i + 1 == buf->cursor) {
             if(cx <= x) {
-                if(!e->hide_cursor) 
-                    ren_draw_rect((RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
+                if(!e->hide_cursor) {
+                    ren_draw_rect(
+                            (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                            REN_WHITE);
+                }
             } else {
-                if(!e->hide_cursor) 
-                    ren_draw_rect((RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->font_size }, REN_WHITE);
+                if(!e->hide_cursor) {
+                    ren_draw_rect(
+                            (RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                            REN_WHITE);
+                }
             }
         }
     }
@@ -115,19 +138,19 @@ void editor_render_statusbar(Editor *e)
     int padding = 0;
     RenRect outer = {0};
     outer.x = 0;
-    outer.y = e->window_height - e->font_size - padding;
+    outer.y = e->window_height - e->config.font_size - padding;
     outer.w = e->window_width;
-    outer.h = e->font_size + padding;
+    outer.h = e->config.font_size + padding;
     ren_draw_rect(outer, REN_BLACK);
 
     switch(e->mode) {
         case MODE_INSERT:
-            draw_text("-- INSERT --", e->font, outer.x, outer.y, e->font_size, REN_WHITE);
+            draw_text("-- INSERT --", e->font, outer.x, outer.y, e->config.font_size, REN_WHITE);
             break;
         case MODE_COMMAND:
             {
                 int offset = 0;
-                offset = draw_codepoint(':', e->font, outer.x + offset, outer.y, e->font_size, REN_WHITE);
+                offset = draw_codepoint(':', e->font, outer.x + offset, outer.y, e->config.font_size, REN_WHITE);
                 editor_render_buffer(e, e->cmd, outer.x + offset, outer.y);
             } break;
         case MODE_NORMAL:
@@ -145,11 +168,11 @@ void editor_render(Editor *e, int x, int y)
 #include <stdio.h>
 void editor_handle_command(Editor *ed, const char *command)
 {
-    int length = buffer_length(ed->cmd);
-    printf("COMMAND:");
-    for(int i = 0; i < length; ++i) {
+    int count = strlen(command);
+    printf("%s\n", command);
+    for(int i = 0; i < count; ++i) {
         rune ch = buffer_getitem(ed->cmd, i);
-        if(ch == 'q' && length == 1) {
+        if(ch == 'q' && count == 1) {
             ed->exit = true;
         }
         putchar(ch);
@@ -213,7 +236,7 @@ void editor_handle_keychar_event(Editor *ed, rune c)
     if(ed->mode == MODE_INSERT) {
         switch(c) {
             case TAB:
-                for(size_t i = 0; i < ed->tab_length; ++i)
+                for(size_t i = 0; i < ed->config.tab_length; ++i)
                     buffer_insert_char(ed->buf, ' ');
                 break;
             case ENTER:
@@ -325,8 +348,9 @@ int main(void)
     ed.cmd  = buffer_new();
     ed.buf  = buffer_new();
     ed.font = &atlas;
-    ed.font_size  = 20;
-    ed.tab_length = 4;
+    ed.config.font_size  = 20;
+    ed.config.tab_length = 4;
+    ed.config.background = (RenColor){ 0x18, 0x36, 0x48, 0xFF };
 
     ed.exit = false;
 
@@ -337,8 +361,9 @@ int main(void)
         RGFW_event event;
         while (RGFW_window_checkEvent(window, &event)) {
             if (event.type == RGFW_windowClose) {
-                break;
+                ed.exit = true;
             }
+
             switch(event.type) {
             case RGFW_keyChar:
                 {
@@ -362,7 +387,7 @@ int main(void)
             }
         }
 
-        ren_clear((RenColor){ 0x18, 0x36, 0x48, 0xFF });
+        ren_clear(ed.config.background);
         editor_render(&ed, 0, 0);
         ren_flush();
 

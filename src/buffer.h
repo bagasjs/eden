@@ -125,6 +125,7 @@ rune   buffer_getitem(Buffer *buffer, size_t index);
 void   buffer_setitem(Buffer *buffer, size_t index, rune value);
 size_t buffer_length(Buffer *buffer);
 void   buffer_dump(Buffer *buffer);
+
 const char *buffer_to_cstr(Buffer *base);
 
 /**

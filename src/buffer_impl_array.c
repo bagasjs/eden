@@ -61,6 +61,8 @@ void buffer_unsafe_insert(Buffer *base, size_t index, const char *text, size_t t
         memmove(buf->items + buf->count, text, text_length);
     }
     buf->count += text_length;
+    // Do not count for null terminator
+    buf->items[buf->count] = 0;
 }
 
 void buffer_unsafe_delete(Buffer *base, size_t start, size_t length)
@@ -78,6 +80,7 @@ void buffer_unsafe_delete(Buffer *base, size_t start, size_t length)
     //      ^--
     memmove(buf->items + start, buf->items + start + length, right - length);
     buf->count -= length;
+    buf->items[buf->count] = 0;
 }
 
 rune buffer_getitem(Buffer *base, size_t index)
