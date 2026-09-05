@@ -136,6 +136,19 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
 void editor_render_statusbar(Editor *e)
 {
     int padding = 0;
+
+    /// File name bar
+    RenRect namebar = {0};
+    namebar.x = 0;
+    namebar.y = e->window_height - 2*e->config.font_size - padding;
+    namebar.w = e->window_width;
+    namebar.h = e->config.font_size + padding;
+    const char *file_path = e->buf->filepath;
+    if(!file_path) file_path = "[No Name]";
+    ren_draw_rect(namebar, REN_WHITE);
+    draw_text(file_path, e->font, namebar.x, namebar.y, e->config.font_size, REN_BLACK);
+
+    /// Command bar
     RenRect outer = {0};
     outer.x = 0;
     outer.y = e->window_height - e->config.font_size - padding;

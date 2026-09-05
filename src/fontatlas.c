@@ -152,7 +152,7 @@ void draw_text(const char *text, FontAtlas *atlas, int x, int y, int font_size, 
             case '\t':
                 break;
             default:
-                cx = draw_codepoint(c, atlas, cx, cy, font_size, REN_WHITE);
+                cx = draw_codepoint(c, atlas, cx, cy, font_size, tint);
                 break;
         }
     }
