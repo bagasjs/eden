@@ -53,14 +53,19 @@ typedef struct EditorConfig {
 
     size_t font_size;
     size_t tab_length;
+    size_t scroll_margin;
+    const char *font_filepath;
 } EditorConfig;
 
 typedef struct {
     EditorConfig config;
 
     Buffer *buf;
+    rune prevc;
+
     Buffer *cmd;
     Mode mode;
+    int scroll_line;
 
     FontAtlas *font;
 
@@ -75,14 +80,12 @@ typedef struct {
         size_t capacity;
     } tmp;
 
-    rune prevc;
-
     bool exit;
 } Editor;
 
 #define CURSOR_WIDTH 2
 
-void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
+void editor_render_buffer(Editor *e, Buffer *buf, int x, int y, size_t max_lines)
 {
     int cx = x;
     int cy = y;
@@ -100,36 +103,100 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y)
         }
     }
 
-    for(size_t i = 0; i < buffer_length(buf); ++i) {
-        rune c = buffer_getitem(buf, i);
+    /*
+     * Keep the cursor inside a scroll margin.
+     *
+     * scroll_line is persistent state in Editor.
+     */
+    size_t line_start = e->scroll_line;
+    size_t line_end = line_start + max_lines;
 
-        switch(c) {
-            case '\n':
-                cx = x;
-                cy += e->config.font_size;
-                break;
-            case '\t':
-                break;
-            default:
-                cx = draw_codepoint(c, e->font, cx, cy, e->config.font_size, REN_WHITE);
-                break;
+    /*
+     * Cursor moved above the upper scroll margin.
+     */
+    if (buf->current_line < line_start + e->config.scroll_margin) {
+        if (buf->current_line >= e->config.scroll_margin)
+            line_start = buf->current_line - e->config.scroll_margin;
+        else
+            line_start = 0;
+    }
+
+    /*
+     * Cursor moved below the lower scroll margin.
+     */
+    if (buf->current_line >=
+        line_start + max_lines - e->config.scroll_margin)
+    {
+        if (max_lines > e->config.scroll_margin) {
+            line_start =
+                buf->current_line
+                - max_lines
+                + e->config.scroll_margin
+                + 1;
+        } else {
+            line_start = buf->current_line;
         }
+    }
 
-        if(i + 1 == buf->cursor) {
-            if(cx <= x) {
-                if(!e->hide_cursor) {
-                    ren_draw_rect(
-                            (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
-                            REN_WHITE);
-                }
-            } else {
-                if(!e->hide_cursor) {
-                    ren_draw_rect(
-                            (RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
-                            REN_WHITE);
+    /*
+     * Don't scroll beyond the beginning/end of the buffer.
+     */
+    if (line_start > buf->lines.count)
+        line_start = buf->lines.count;
+
+    if (line_start + max_lines > buf->lines.count) {
+        if (buf->lines.count > max_lines)
+            line_start = buf->lines.count - max_lines;
+        else
+            line_start = 0;
+    }
+
+    /*
+     * Store the calculated viewport position so the next
+     * frame starts from the same position.
+     */
+    e->scroll_line = line_start;
+
+    line_end = line_start + max_lines;
+
+    if (line_end > buf->lines.count)
+        line_end = buf->lines.count;
+
+    for(size_t line_num = line_start; line_num < line_end; ++line_num) {
+        Line line = buf->lines.items[line_num];
+
+        for(size_t i = line.start; i < line.end; ++i) {
+            rune c = buffer_getitem(buf, i);
+            switch(c) {
+                case '\n':
+                    goto next_line;
+                case '\t':
+                    break;
+                default:
+                    cx = draw_codepoint(c, e->font, cx, cy, e->config.font_size, REN_WHITE);
+                    break;
+            }
+
+            if(i + 1 == buf->cursor) {
+                if(cx <= x) {
+                    if(!e->hide_cursor) {
+                        ren_draw_rect(
+                                (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                                REN_WHITE);
+                    }
+                } else {
+                    if(!e->hide_cursor) {
+                        ren_draw_rect(
+                                (RenRect) { .x = cx - CURSOR_WIDTH, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                                REN_WHITE);
+                    }
                 }
             }
         }
+
+next_line:
+        cx = x;
+        cy += e->config.font_size;
     }
 }
 
@@ -164,7 +231,7 @@ void editor_render_statusbar(Editor *e)
             {
                 int offset = 0;
                 offset = draw_codepoint(':', e->font, outer.x + offset, outer.y, e->config.font_size, REN_WHITE);
-                editor_render_buffer(e, e->cmd, outer.x + offset, outer.y);
+                editor_render_buffer(e, e->cmd, outer.x + offset, outer.y, 1);
             } break;
         case MODE_NORMAL:
         default:
@@ -174,23 +241,19 @@ void editor_render_statusbar(Editor *e)
 
 void editor_render(Editor *e, int x, int y)
 {
-    editor_render_buffer(e, e->buf, x, y);
+    editor_render_buffer(e, e->buf, x, y, e->window_height/e->config.font_size - 2);
     editor_render_statusbar(e);
 }
 
 #include <stdio.h>
-void editor_handle_command(Editor *ed, const char *command)
+void editor_handle_command(Editor *ed, StringView command)
 {
-    int count = strlen(command);
-    printf("%s\n", command);
-    for(int i = 0; i < count; ++i) {
-        rune ch = buffer_getitem(ed->cmd, i);
-        if(ch == 'q' && count == 1) {
-            ed->exit = true;
-        }
-        putchar(ch);
+    printf("%s\n", command.items);
+    if(sv_eq(command, SVLIT("q"))) {
+        ed->exit = true;
+    } else if(sv_eq(command, SVLIT("w"))) {
+
     }
-    putchar('\n');
 }
 
 // TODO: Platform abstraction
@@ -229,7 +292,7 @@ void editor_handle_keychar_event(Editor *ed, rune c)
     if(ed->mode == MODE_COMMAND) {
         switch(c) {
             case ENTER:
-                editor_handle_command(ed, buffer_to_cstr(ed->cmd));
+                editor_handle_command(ed, buffer_to_sv(ed->cmd));
                 buffer_reset(ed->cmd);
                 ed->mode = MODE_NORMAL;
                 break;
@@ -275,6 +338,12 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 break;
             case 'd':
                 if(ed->prevc == 'd') buffer_delete_current_line(ed->buf);
+                break;
+            case 'g':
+                if(ed->prevc == 'g') buffer_move_to_first_line(ed->buf);
+                break;
+            case 'G':
+                buffer_move_to_last_line(ed->buf);
                 break;
             case '0':
                 buffer_move_to_start_of_line(ed->buf);
@@ -323,8 +392,39 @@ void editor_handle_keychar_event(Editor *ed, rune c)
     ed->prevc = c;
 }
 
-int main(void)
+#define NOB_IMPLEMENTATION
+#include "nob.h"
+void buffer_insert_file_content(Buffer *buffer, const char *file_path)
 {
+    Nob_String_Builder sb = {0};
+    if(!nob_read_entire_file(file_path, &sb)) {
+        // TODO: we want the editor's command buffer show this error message
+        fprintf(stderr, "ERR: failed to load file %s\n", file_path);
+    }
+    buffer_insert(buffer, sb.items, sb.count);
+    sb_free(sb);
+}
+
+EditorConfig parse_config_file(const char *file_path)
+{
+    EditorConfig config = {0};
+    config.font_size  = 20;
+    config.tab_length = 4;
+    config.background = (RenColor){ 0x18, 0x36, 0x48, 0xFF };
+    config.font_filepath = "./assets/firacode.ttf";
+    config.scroll_margin = 3;
+    return config;
+}
+
+int main(int argc, char *argv[])
+{
+    EditorConfig config = parse_config_file(NULL);
+
+    const char *file_path = NULL;
+    if(argc > 1) {
+        file_path = argv[1];
+    }
+
     RGFW_glHints* hints = RGFW_getGlobalHints_OpenGL();
     // NOTE: We use 4.3 in because in Windows glDebugMessageCallback is not exists in 3.3
     hints->major = 4;
@@ -352,20 +452,27 @@ int main(void)
     ren_init();
     ren_viewport(0, 0, w, h);
 
+
+    Editor ed = {0};
+    ed.config = config;
+
     FontAtlas atlas = {0};
-    if(!load_font_atlas_from_file(&atlas, "./assets/firacode.ttf")) {
+    if(!load_font_atlas_from_file(&atlas, config.font_filepath)) {
         return -1;
     }
 
-    Editor ed = {0};
     ed.cmd  = buffer_new();
     ed.buf  = buffer_new();
     ed.font = &atlas;
-    ed.config.font_size  = 20;
-    ed.config.tab_length = 4;
-    ed.config.background = (RenColor){ 0x18, 0x36, 0x48, 0xFF };
-
     ed.exit = false;
+
+    if(file_path) {
+        buffer_insert_file_content(ed.buf, file_path);
+        ed.buf->filepath = file_path;
+        printf("Loaded file: %s\n", file_path);
+        printf("  Total lines: %zu\n", ed.buf->lines.count);
+        printf("  Current Line: %zu\n", ed.buf->current_line);
+    }
 
     while(!ed.exit && RGFW_window_shouldClose(window) == RGFW_FALSE) {
         ed.window_width  = window->w;

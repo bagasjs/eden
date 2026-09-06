@@ -127,6 +127,7 @@ size_t buffer_length(Buffer *buffer);
 void   buffer_dump(Buffer *buffer);
 
 const char *buffer_to_cstr(Buffer *base);
+StringView  buffer_to_sv(Buffer *base);
 
 /**
  * This is unsafe because it will make buffer's base state to be invalid

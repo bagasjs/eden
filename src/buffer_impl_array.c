@@ -110,6 +110,12 @@ const char *buffer_to_cstr(Buffer *base)
     return buf->items;
 }
 
+StringView buffer_to_sv(Buffer *base)
+{
+    ArrayBuffer *buf = (ArrayBuffer*)base;
+    return (StringView) { .items = buf->items, .count = buf->count };
+}
+
 void buffer_dump(Buffer *base)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;

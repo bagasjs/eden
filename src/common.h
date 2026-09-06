@@ -1,9 +1,19 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+
+#ifndef MIN
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#endif
+#ifndef MAX
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#endif
 
 #ifdef MEMDEBUG
 #define MALLOC_WITH_LABEL(SIZE, LABEL) malloc((SIZE))
@@ -19,7 +29,7 @@ void  __free_with_label(void *ptr, const char *label);
 #define da_append(da, item) do {                                                     \
         if((da)->count >= (da)->capacity) {                                          \
             if((da)->capacity == 0) (da)->capacity = DA_INIT_CAP;                    \
-            while((da)->capacity < (da)->count) (da)->capacity *= 2;                 \
+            while((da)->capacity <= (da)->count) (da)->capacity *= 2;                \
             (da)->items = realloc((da)->items, (da)->capacity*sizeof(*(da)->items)); \
             assert((da)->items != NULL && "Buy more RAM lol");                       \
         }                                                                            \
@@ -30,7 +40,7 @@ void  __free_with_label(void *ptr, const char *label);
     do {                                                                             \
         if((da)->count >= (da)->capacity) {                                          \
             if((da)->capacity == 0) (da)->capacity = DA_INIT_CAP;                    \
-            while((da)->capacity < (da)->count) (da)->capacity *= 2;                 \
+            while((da)->capacity <= (da)->count) (da)->capacity *= 2;                \
             (da)->items = realloc((da)->items, (da)->capacity*sizeof(*(da)->items)); \
             assert((da)->items != NULL && "Buy more RAM lol");                       \
         }                                                                            \
@@ -51,5 +61,14 @@ void  __free_with_label(void *ptr, const char *label);
                 (da)->count - (index) - 1);                         \
     } while(0)
 
+
+typedef struct StringView {
+    const char *items;
+    size_t      count;
+} StringView;
+
+#define SVLIT(CSTR) (StringView){ .items = (CSTR), .count = sizeof(CSTR) - 1 }
+
+bool sv_eq(StringView a, StringView b);
 
 #endif // COMMON_H_

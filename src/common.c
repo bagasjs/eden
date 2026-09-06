@@ -15,4 +15,11 @@ void  __free_with_label(void *ptr, const char *label)
     free(ptr);
 }
 
-
+bool sv_eq(StringView a, StringView b)
+{
+    if(a.count != b.count) return false;
+    for(size_t i = 0; i < a.count; ++i) {
+        if(a.items[i] != b.items[i]) return false;
+    }
+    return true;
+}

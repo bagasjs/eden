@@ -107,14 +107,20 @@ void buffer_move_cursor_to_left(Buffer *buf, size_t n_step)
 
 void buffer_move_cursor_to_right(Buffer *buf, size_t n_step)
 {
+    printf("MOVE TO RIGHT:\n");
     size_t length = buffer_length(buf);
     size_t prob = buf->cursor + n_step;
     if(buf->cursor + n_step >= length) prob = length;
     size_t curr_line_num = buf->current_line;
     Line   curr_line     = buf->lines.items[curr_line_num];
+    printf("    current: %zu\n", buf->cursor);
+    printf("    target: %zu\n",  prob);
+    printf("    Probing line\n");
+    printf("        current line: %zu\n", curr_line_num);
     while(curr_line_num < length && prob > curr_line.end) {
         curr_line_num += 1;
         curr_line      = buf->lines.items[curr_line_num];
+        printf("        next line: %zu [%zu - %zu]\n", curr_line_num, curr_line.start, curr_line.end);
     }
     buffer_move_cursor_to(buf, prob);
     buf->current_line = curr_line_num;
@@ -123,8 +129,8 @@ void buffer_move_cursor_to_right(Buffer *buf, size_t n_step)
 void buffer_insert(Buffer *buf, const char *text, size_t size)
 {
     buffer_unsafe_insert(buf, buf->cursor, text, size);
-    buffer_move_cursor_to_right(buf, size);
     buffer_update_lines(buf);
+    buffer_move_cursor_to_right(buf, size);
 }
 
 void buffer_insert_char(Buffer *buf, rune ch)
@@ -205,4 +211,14 @@ void buffer_move_to_end_of_line(Buffer *buf)
     // TODO: Taking advantage of UB
     //       This feels wrong. Find a better way to do this
     buffer_move_cursor_to_line(buf, buffer_get_current_line(buf), -1);
+}
+
+void buffer_move_to_first_line(Buffer *buf)
+{
+    buffer_move_cursor_to_line(buf, 0, -1);
+}
+
+void buffer_move_to_last_line(Buffer *buf)
+{
+    buffer_move_cursor_to_line(buf, buf->lines.count - 1, -1);
 }
