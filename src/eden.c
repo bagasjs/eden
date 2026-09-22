@@ -66,6 +66,7 @@ typedef struct {
     Buffer *cmd;
     Mode mode;
     int scroll_line;
+    int scroll_col;
 
     FontAtlas *font;
 
@@ -85,7 +86,7 @@ typedef struct {
 
 #define CURSOR_WIDTH 2
 
-void editor_render_buffer(Editor *e, Buffer *buf, int x, int y, size_t max_lines)
+void editor_render_buffer(Editor *e, Buffer *buf, int x, int y, size_t max_lines, size_t max_cols)
 {
     int cx = x;
     int cy = y;
@@ -93,16 +94,7 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y, size_t max_lines
     // TODO: would be better if we do 60FPS
     // e->hide_cursor = !e->hide_cursor;
 
-    if(buf->cursor == 0) {
-        if(cx <= x) {
-            if(!e->hide_cursor) {
-                ren_draw_rect(
-                        (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
-                        REN_WHITE);
-            }
-        }
-    }
-
+    // Calculate the starting line
     /*
      * Keep the cursor inside a scroll margin.
      *
@@ -162,8 +154,19 @@ void editor_render_buffer(Editor *e, Buffer *buf, int x, int y, size_t max_lines
     if (line_end > buf->lines.count)
         line_end = buf->lines.count;
 
+
     for(size_t line_num = line_start; line_num < line_end; ++line_num) {
         Line line = buf->lines.items[line_num];
+
+        if(line.start == buf->cursor && line.start >= line.end) {
+            if(cx <= x) {
+                if(!e->hide_cursor) {
+                    ren_draw_rect(
+                            (RenRect) { .x = x, .y = cy, .w = CURSOR_WIDTH, .h = e->config.font_size }, 
+                            REN_WHITE);
+                }
+            }
+        }
 
         for(size_t i = line.start; i < line.end; ++i) {
             rune c = buffer_getitem(buf, i);
@@ -231,7 +234,7 @@ void editor_render_statusbar(Editor *e)
             {
                 int offset = 0;
                 offset = draw_codepoint(':', e->font, outer.x + offset, outer.y, e->config.font_size, REN_WHITE);
-                editor_render_buffer(e, e->cmd, outer.x + offset, outer.y, 1);
+                editor_render_buffer(e, e->cmd, outer.x + offset, outer.y, 1, e->window_width/e->config.font_size - 2);
             } break;
         case MODE_NORMAL:
         default:
@@ -241,7 +244,7 @@ void editor_render_statusbar(Editor *e)
 
 void editor_render(Editor *e, int x, int y)
 {
-    editor_render_buffer(e, e->buf, x, y, e->window_height/e->config.font_size - 2);
+    editor_render_buffer(e, e->buf, x, y, e->window_height/e->config.font_size - 2, e->window_width/e->config.font_size - 2);
     editor_render_statusbar(e);
 }
 

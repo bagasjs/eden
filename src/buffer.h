@@ -32,6 +32,7 @@ typedef uint32_t rune;
 typedef struct Line Line;
 struct Line {
     size_t start;
+    // TODO: end must be inclusive
     size_t end;
 };
 
@@ -79,7 +80,9 @@ typedef struct Buffer {
     const char *filepath;
     Lines  lines;
 
+    // TODO: cursor must start from 1
     size_t cursor;
+    // TODO: current_line must start from 1
     size_t current_line;
 } Buffer;
 

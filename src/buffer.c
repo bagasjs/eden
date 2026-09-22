@@ -41,7 +41,7 @@ Buffer *buffer_new(void)
 {
     Buffer *buffer = buffer_unsafe_new();
     memset(buffer, 0, sizeof(*buffer));
-    buffer->cursor = 0;
+    buffer->cursor       = 0;
     buffer->current_line = 0;
     buffer_update_lines(buffer);
     return buffer;
@@ -107,20 +107,20 @@ void buffer_move_cursor_to_left(Buffer *buf, size_t n_step)
 
 void buffer_move_cursor_to_right(Buffer *buf, size_t n_step)
 {
-    printf("MOVE TO RIGHT:\n");
+    /*printf("MOVE TO RIGHT:\n");*/
     size_t length = buffer_length(buf);
     size_t prob = buf->cursor + n_step;
     if(buf->cursor + n_step >= length) prob = length;
     size_t curr_line_num = buf->current_line;
     Line   curr_line     = buf->lines.items[curr_line_num];
-    printf("    current: %zu\n", buf->cursor);
-    printf("    target: %zu\n",  prob);
-    printf("    Probing line\n");
-    printf("        current line: %zu\n", curr_line_num);
+    /*printf("    current: %zu\n", buf->cursor);*/
+    /*printf("    target: %zu\n",  prob);*/
+    /*printf("    Probing line\n");*/
+    /*printf("        current line: %zu\n", curr_line_num);*/
     while(curr_line_num < length && prob > curr_line.end) {
         curr_line_num += 1;
         curr_line      = buf->lines.items[curr_line_num];
-        printf("        next line: %zu [%zu - %zu]\n", curr_line_num, curr_line.start, curr_line.end);
+        /*printf("        next line: %zu [%zu - %zu]\n", curr_line_num, curr_line.start, curr_line.end);*/
     }
     buffer_move_cursor_to(buf, prob);
     buf->current_line = curr_line_num;
