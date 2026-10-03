@@ -70,6 +70,7 @@ typedef struct EditorUI {
     int window_height;
 
     int prev_line_start;
+    int prev_col_start;
 } EditorUI;
 
 typedef struct {
@@ -113,6 +114,40 @@ void editor_ui_handle_y_overflow(Editor *ed, Buffer *buf, int *output_line_start
     *output_line_end   = line_end;
 }
 
+/*void editor_ui_handle_x_overflow(Editor *ed, Buffer *buf, int *output_col_start, int *output_col_end, int max_cols)*/
+/*{*/
+/*    Line current_line = buf->lines.items[buf->current_line];*/
+/*    size_t current_line_length = current_line.end - current_line.start;*/
+/*    size_t current_col = buf->cursor - current_line.start;*/
+/*    size_t col_start = ed->ui.prev_col_start;*/
+/*    if(current_col < col_start + ed->config.scroll_margin) {*/
+/*        col_start = current_col >= ed->config.scroll_margin ?*/
+/*            current_col - ed->config.scroll_margin :*/
+/*            0;*/
+/*    }*/
+/*    if(current_col >= col_start + max_cols - ed->config.scroll_margin) {*/
+/*        if(max_cols > ed->config.scroll_margin) {*/
+/*            col_start =*/
+/*                current_col*/
+/*                - max_cols */
+/*                + ed->config.scroll_margin*/
+/*                + 1;*/
+/*        } else {*/
+/*            col_start = current_col;*/
+/*        }*/
+/*    }*/
+/**/
+/*    if (col_start > current_line_length) col_start = current_line_length;*/
+/**/
+/*    ed->ui.prev_col_start = col_start;*/
+/**/
+/*    size_t col_end = col_start + max_cols;*/
+/*    if (col_end > current_line_length) col_end = current_line_length;*/
+/**/
+/*    *output_col_start = col_start;*/
+/*    *output_col_end   = col_end;*/
+/*}*/
+
 void editor_ui_render_buffer(Editor *ed, Buffer *buf, int x, int y, int width, int height)
 {
     if(x < 0) x = 0;
@@ -125,6 +160,12 @@ void editor_ui_render_buffer(Editor *ed, Buffer *buf, int x, int y, int width, i
 
     int line_start, line_end;
     editor_ui_handle_y_overflow(ed, buf, &line_start, &line_end, height/ed->config.font_size);
+    /*int col_start, col_end;*/
+    /*editor_ui_handle_x_overflow(ed, buf, &col_start, &col_end, 80);*/
+
+    BufferIter iter = {0};
+    for(buffer_iter_start(&iter); !buffer_iter_iseof(&iter); buffer_iter_next(&iter)) {
+    }
 
     for(int line_num = line_start; line_num < line_end; ++line_num) {
         Line line = buf->lines.items[line_num];
@@ -134,7 +175,12 @@ void editor_ui_render_buffer(Editor *ed, Buffer *buf, int x, int y, int width, i
                     REN_WHITE);
         }
 
-        for(size_t i = line.start; i <= line.end; ++i) {
+        size_t ccol_start = line.start;
+        size_t ccol_end   = line.end;
+        if(ccol_start > line.end) ccol_start = line.end;
+        if(ccol_end   > line.end) ccol_end   = line.end;
+
+        for(size_t i = ccol_start; i <= ccol_end; ++i) {
             rune c = buffer_getitem(buf, i);
             switch(c) {
                 case '\n':

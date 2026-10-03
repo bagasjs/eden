@@ -208,7 +208,11 @@ void buffer__debug(Buffer *buf);
 
 // Useful iterator API for buffer
 typedef struct BufferIter {
-
+    rune c;
 } BufferIter;
+
+void buffer_iter_start(BufferIter *iter);
+bool buffer_iter_iseof(BufferIter *iter);
+bool buffer_iter_next(BufferIter *iter);
 
 #endif // BUFFER_H_ 
