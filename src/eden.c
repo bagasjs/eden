@@ -338,8 +338,9 @@ void editor_handle_keychar_event(Editor *ed, rune c)
                 ed->core.mode = MODE_INSERT;
                 break;
             case 'O':
-                buffer_move_to_line_above(ed->core.buf);
+                buffer_move_to_start_of_line(ed->core.buf);
                 buffer_insert_char(ed->core.buf, '\n');
+                buffer_move_to_line_above(ed->core.buf);
                 ed->core.mode = MODE_INSERT;
                 break;
             default:
