@@ -196,7 +196,7 @@ void editor_ui_render_statusbar(Editor *e)
     }
 }
 
-void editor_ui_render(Editor *ed, int x, int y)
+void editor_ui_render(Editor *ed)
 {
     editor_ui_render_buffer(ed, ed->core.buf, 0, 0, ed->ui.window_width, ed->ui.window_height);
     /*editor_render_buffer(e, e->core.buf, x, y, e->ui.window_height/e->config.font_size - 2);*/
@@ -425,6 +425,8 @@ int main(int argc, char *argv[])
     ed.core.cmd  = buffer_new();
     ed.core.buf  = buffer_new();
     ed.ui.font = &atlas;
+    ed.ui.window_width  = window->w;
+    ed.ui.window_height = window->h;
     ed.exit = false;
 
     if(file_path) {
@@ -436,8 +438,6 @@ int main(int argc, char *argv[])
     }
 
     while(!ed.exit && RGFW_window_shouldClose(window) == RGFW_FALSE) {
-        ed.ui.window_width  = window->w;
-        ed.ui.window_height = window->h;
 
         RGFW_event event;
         while (RGFW_window_checkEvent(window, &event)) {
@@ -450,6 +450,11 @@ int main(int argc, char *argv[])
                 {
                     editor_handle_keychar_event(&ed, event.keyChar.value);
                 } break;
+            case RGFW_windowResized:
+                ed.ui.window_width  = window->w;
+                ed.ui.window_height = window->h;
+                ren_viewport(0, 0, window->w, window->h);
+                break;
             case RGFW_keyPressed:
                 {
                     switch(event.key.value) {
@@ -469,7 +474,7 @@ int main(int argc, char *argv[])
         }
 
         ren_clear(ed.config.background);
-        editor_ui_render(&ed, 0, 0);
+        editor_ui_render(&ed);
         ren_flush();
 
         RGFW_window_swapBuffers_OpenGL(window);
