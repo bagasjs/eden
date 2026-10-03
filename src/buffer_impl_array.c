@@ -83,7 +83,7 @@ void buffer_unsafe_delete(Buffer *base, size_t start, size_t length)
     buf->items[buf->count] = 0;
 }
 
-rune buffer_getitem(Buffer *base, size_t index)
+rune buffer_unsafe_getitem(Buffer *base, size_t index)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;
 
@@ -91,7 +91,7 @@ rune buffer_getitem(Buffer *base, size_t index)
     return buf->items[index];
 }
 
-void buffer_setitem(Buffer *base, size_t index, rune value)
+void buffer_unsafe_setitem(Buffer *base, size_t index, rune value)
 {
     ArrayBuffer *buf = (ArrayBuffer*)base;
     if(index > buf->count) return;

@@ -17,6 +17,18 @@ void buffer__debug(Buffer *buf)
     }
 }
 
+rune buffer_getitem(Buffer *buffer, size_t cursor_pos)
+{
+    // TODO: This should be cursor_pos - 1
+    return buffer_unsafe_getitem(buffer, cursor_pos);
+}
+
+void buffer_setitem(Buffer *buffer, size_t cursor_pos, rune value)
+{
+    // TODO: This should be cursor_pos - 1
+    return buffer_unsafe_setitem(buffer, cursor_pos, value);
+}
+
 static void buffer_update_lines(Buffer *buffer)
 {
     buffer->lines.count = 0;

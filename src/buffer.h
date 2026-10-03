@@ -124,13 +124,23 @@ static inline size_t buffer_get_total_lines(Buffer *buf)
 /// Implementation Dependent APIs
 ///
 
-rune   buffer_getitem(Buffer *buffer, size_t index);
-void   buffer_setitem(Buffer *buffer, size_t index, rune value);
 size_t buffer_length(Buffer *buffer);
 void   buffer_dump(Buffer *buffer);
 
 const char *buffer_to_cstr(Buffer *base);
 StringView  buffer_to_sv(Buffer *base);
+
+/**
+ * This is unsafe because index starts from 0
+ * Most of the safe API consider the cursor starts from 1
+ */
+rune buffer_unsafe_getitem(Buffer *buffer, size_t index);
+
+/**
+ * This is unsafe because index starts from 0
+ * Most of the safe API consider the cursor starts from 1
+ */
+void buffer_unsafe_setitem(Buffer *buffer, size_t index, rune value);
 
 /**
  * This is unsafe because it will make buffer's base state to be invalid
@@ -157,6 +167,7 @@ void buffer_unsafe_destroy(Buffer *buf);
  */
 void buffer_unsafe_reset(Buffer *buffer);
 
+
 //////////////////////////////////////
 ///
 /// Implementation Independent APIs
@@ -165,6 +176,9 @@ void buffer_unsafe_reset(Buffer *buffer);
 Buffer *buffer_new(void);
 void buffer_destroy(Buffer *buffer);
 void buffer_reset(Buffer *buffer);
+
+rune   buffer_getitem(Buffer *buffer, size_t cursor_pos);
+void   buffer_setitem(Buffer *buffer, size_t cursor_pos, rune value);
 
 // NOTE: this shall be the core API. We need this because we need
 // the insertion, deletion and cursor movement works as some sort of
@@ -190,5 +204,11 @@ void buffer_move_to_last_line(Buffer *buf);
 void buffer_move_to_line(Buffer *buf, size_t line_number, size_t line_offset);
 
 void buffer__debug(Buffer *buf);
+
+
+// Useful iterator API for buffer
+typedef struct BufferIter {
+
+} BufferIter;
 
 #endif // BUFFER_H_ 
